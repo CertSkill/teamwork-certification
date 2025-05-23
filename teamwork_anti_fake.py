@@ -78,7 +78,8 @@ if st.session_state.step == "profilo":
     anni_settore = st.slider("Anni di esperienza nel settore", 0, 40, 5)
     anni_ruolo = st.slider("Anni di esperienza nel ruolo", 0, 40, 3)
 
-    if st.button("Inizia il test"):
+if st.button("Inizia il test"):
+    if all([nome, eta, azienda, settore, ruolo]):
         st.session_state.profilo_utente = {
             "nome": nome,
             "eta": eta,
@@ -91,14 +92,18 @@ if st.session_state.step == "profilo":
 
         # Genera prima domanda
         prompt = genera_prompt_iniziale(st.session_state.profilo_utente)
-        domanda = openai.chat.completions.create(
+        risposta_openai = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
-        ).choices[0].message.content.strip()
+        )
+        domanda = risposta_openai.choices[0].message.content.strip()
 
-        st.session_state.domande.append(domanda)
+        st.session_state.domande = [domanda]
+        st.session_state.indice = 0
         st.session_state.step = "test"
         st.rerun()
+    else:
+        st.error("Compila tutti i campi prima di iniziare il test.")
 
 # --- FASE 2: Domande dinamiche e valutazione ---
 elif st.session_state.step == "test":
