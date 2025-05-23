@@ -30,14 +30,20 @@ Genera una domanda per valutare il teamwork. Deve essere situazionale e realisti
 # Prompt domanda successiva
 def genera_domanda_dinamica(profilo, storia_risposte):
     contesto = "\n".join([f"D: {d}\nR: {r}" for d, r in storia_risposte])
-    return f"""Profilo:
+    prompt = f"""In base a questo profilo:
 
-{profilo}
+Nome: {profilo['nome']}, Età: {profilo['eta']}, Azienda: {profilo['azienda']}, Settore: {profilo['settore']}, Ruolo: {profilo['ruolo']}, Esperienza nel settore: {profilo['anni_settore']}, Esperienza nel ruolo: {profilo['anni_ruolo']}
 
-Storia risposte:
+Ecco alcune risposte precedenti:
 {contesto}
 
-Genera una nuova domanda per continuare il test sul teamwork. Domanda situazionale, breve, senza spiegazioni."""
+Genera una nuova domanda di valutazione del teamwork per continuare l’assessment. Deve esplorare meglio eventuali incoerenze o approfondire nuovi aspetti. Domanda situazionale, scrivi solo la domanda senza spiegazioni, né premesse, né introduzioni."""
+
+    res = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return res.choices[0].message.content.strip()
 
 # Valutazione risposta
 def valuta_risposta(risposta):
