@@ -19,9 +19,9 @@ def genera_prompt_iniziale(profilo):
     return f"""Sei un esperto psicologo del lavoro. In base al seguente profilo:
 Nome: {profilo['nome']}, Età: {profilo['eta']}, Azienda: {profilo['azienda']}, Settore: {profilo['settore']}, Ruolo: {profilo['ruolo']}, Esperienza settore: {profilo['anni_settore']} anni, Esperienza ruolo: {profilo['anni_ruolo']} anni
 Genera una domanda per valutare il teamwork composta da:
-1. Scenario di contesto
-2. Problema osservato
-3. Domanda specifica
+- Scenario di contesto
+- Problema osservato
+- Domanda specifica
 Scrivi ogni parte su una riga diversa senza numerarle."""
 
 def genera_domanda_dinamica(profilo, storia_risposte):
@@ -33,9 +33,9 @@ Storia risposte:
 {contesto}
 
 Genera una nuova domanda per continuare il test sul teamwork. Domanda situazionale, breve, senza spiegazioni, strutturata in:
-1. Scenario di contesto
-2. Problema
-3. Domanda
+- Scenario di contesto
+- Problema
+- Domanda
 Ogni parte su una riga diversa."""
 
 def valuta_risposta(risposta):
@@ -112,7 +112,7 @@ elif st.session_state.step == "test":
     domanda = st.session_state.domande[indice].splitlines()
     st.markdown(f"**Domanda {indice + 1} di 30**")
     for line in domanda:
-        st.markdown(line)
+        st.markdown(f"{line}")
 
     risposta = st.text_area("La tua risposta", key=f"risposta_{indice}")
 
@@ -171,7 +171,8 @@ elif st.session_state.step == "risultato":
 
     st.markdown("### 📃 Descrizione del profilo")
     descrizione = genera_descrizione_finale(st.session_state.profilo_utente, media)
-    st.write(descrizione)
+    for riga in descrizione.split("\n"):
+        st.markdown(riga)
 
     if st.button("🔄 Ricomincia il test"):
         st.session_state.clear()
