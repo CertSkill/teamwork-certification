@@ -39,6 +39,8 @@ Genera una nuova domanda per continuare il test sul teamwork. Domanda situaziona
 Ogni parte su una riga diversa."""
 
 def valuta_risposta(risposta):
+    if not risposta.strip():
+        return "Collaborazione: 0\nComunicazione: 0\nLeadership: 0\nProblem solving: 0\nEmpatia: 0\nMotivazione: Nessuna risposta fornita."
     prompt = f"""Valuta questa risposta in un contesto di lavoro in team:
 \"{risposta}\"
 Assegna un punteggio da 0 a 100 per:
