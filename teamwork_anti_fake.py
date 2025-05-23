@@ -1,153 +1,165 @@
-
 import streamlit as st
 import openai
 
-st.set_page_config(page_title="Certificazione Team Work – Anti-manipolazione", layout="centered")
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+st.set_page_config(page_title="Certificazione Team Work", layout="centered")
 
-st.title("Certificazione Team Work – Sistema Adattivo e Coerente")
-
-# Inizializzazione
-if "fase" not in st.session_state:
-    st.session_state.fase = "anagrafica"
+# Inizializzazione variabili sessione
+if "step" not in st.session_state:
+    st.session_state.step = "profilo"
     st.session_state.profilo_utente = {}
     st.session_state.domande = []
+    st.session_state.indice = 0
     st.session_state.risposte = []
-    st.session_state.comportamenti = []
-    st.session_state.indice_domanda = 0
-    st.session_state.max_domande = 40
-    st.session_state.profilo_valutato = False
-    st.session_state.risultato_finale = ""
+    st.session_state.punteggi = []
+    st.session_state.valutazioni = []
 
-# Step 1 – Profilo
-if st.session_state.fase == "anagrafica":
-    with st.form("profilo_utente"):
-        nome = st.text_input("Nome e Cognome")
-        eta = st.number_input("Età", 16, 100)
-        azienda = st.text_input("Azienda attuale o precedente")
-        settore = st.text_input("Settore (es. Sanità)")
-        ruolo = st.text_input("Ruolo attuale o precedente")
-        anni_settore = st.number_input("Anni esperienza settore", 0, 50)
-        anni_ruolo = st.number_input("Anni esperienza ruolo", 0, 50)
-        submitted = st.form_submit_button("Inizia il test")
+# Funzione per creare il prompt iniziale
+def genera_prompt_iniziale(profilo):
+    return f"""Sei un esperto psicologo del lavoro e recruiter. In base al seguente profilo:
 
-        if submitted and nome and settore and ruolo:
-            st.session_state.profilo_utente = {
-                "nome": nome,
-                "eta": eta,
-                "azienda": azienda,
-                "settore": settore,
-                "ruolo": ruolo,
-                "anni_settore": anni_settore,
-                "anni_ruolo": anni_ruolo
-            }
-            st.session_state.fase = "test"
-            st.rerun()
+Nome: {profilo['nome']}
+Età: {profilo['eta']}
+Azienda: {profilo['azienda']}
+Settore: {profilo['settore']}
+Ruolo: {profilo['ruolo']}
+Anni di esperienza nel settore: {profilo['anni_settore']}
+Anni di esperienza nel ruolo: {profilo['anni_ruolo']}
 
-# Funzione generazione domanda con dilemmi e incoerenze
-def genera_domanda_anti_fake(risposte_precedenti):
-    profilo = st.session_state.profilo_utente
-    prompt = f"""
-Sei un team di esperti psicologi (Mayo, Lewin, Herzberg, Spector).
-Analizza le seguenti risposte fornite da un candidato:
+Genera la prima di una serie di domande per valutare il teamwork. Le domande devono essere realistiche, situazionali e valutare dinamiche di gruppo, responsabilità, empatia, conflitto o collaborazione. Scrivi solo la domanda, senza altro testo."""
 
-{risposte_precedenti}
+# Funzione per generare una nuova domanda dinamica
+def genera_domanda_dinamica(profilo, storia_risposte):
+    contesto = "\n".join([f"D: {d}\nR: {r}" for d, r in storia_risposte])
+    return f"""In base a questo profilo:
 
-Ora genera una nuova domanda per valutare teamwork in situazioni reali, includendo:
-- dilemmi etici o ambigui
-- situazioni da colloquio simulate
-- possibile contraddizione con risposte precedenti
+Nome: {profilo['nome']}, Età: {profilo['eta']}, Azienda: {profilo['azienda']}, Settore: {profilo['settore']}, Ruolo: {profilo['ruolo']}, Esperienza nel settore: {profilo['anni_settore']}, Esperienza nel ruolo: {profilo['anni_ruolo']}
 
-Scegli tra: comunicazione, empatia, conflitto, collaborazione, leadership.
+Ecco alcune risposte precedenti:
+{contesto}
 
-Scrivi solo la domanda.
-"""
-    out = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return out.choices[0].message.content.strip()
+Genera una nuova domanda di valutazione del teamwork per continuare l’assessment. Deve esplorare meglio eventuali incoerenze o approfondire nuovi aspetti. Scrivi solo la domanda."""
 
-# Analisi del comportamento
-def classifica_comportamento(risposta):
-    prompt = f"""
-Analizza questa risposta:
-"{risposta}"
-Classifica lo stile comportamentale: Cooperativo, Assertivo, Evasivo, Conflittuale, Passivo, Diplomatico, Opportunista.
+# Funzione per valutare la risposta
+def valuta_risposta(risposta):
+    prompt = f"""Valuta questa risposta in un contesto di lavoro in team.
+Risposta: "{risposta}"
 
-Rispondi con:
-Stile: [etichetta]
-Motivazione: [breve motivazione]
-"""
-    result = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return result.choices[0].message.content.strip()
-
-# Valutazione finale
-def valuta_teamwork(risposte, comportamenti):
-    profilo = st.session_state.profilo_utente
-    storia = "\n".join([f"Domanda: {q}\nRisposta: {a}\nComportamento: {c}" for q, a, c in zip(st.session_state.domande, risposte, comportamenti)])
-    prompt = f"""
-Analizza le seguenti risposte per valutare il teamwork:
-
-{storia}
-
-Assegna punteggi da 0 a 100 su:
+Assegna un punteggio da 0 a 100 per:
 - Collaborazione
 - Comunicazione
-- Gestione dei conflitti
-- Leadership diffusa
+- Leadership
+- Problem solving
 - Empatia
 
-Indica media, punti forti, aree deboli. Se media >=70, consiglia badge.
-"""
+Scrivi nel formato:
+Collaborazione: XX
+Comunicazione: XX
+Leadership: XX
+Problem solving: XX
+Empatia: XX
+
+Spiega brevemente perché per ogni punteggio."""
     res = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}]
     )
     return res.choices[0].message.content.strip()
 
-# Fase test
-if st.session_state.fase == "test":
-    if st.session_state.indice_domanda < st.session_state.max_domande:
-        if st.session_state.indice_domanda == 0 or len(st.session_state.domande) <= st.session_state.indice_domanda:
-            storia = "\n".join([f"Domanda: {d}\nRisposta: {r}" for d, r in zip(st.session_state.domande, st.session_state.risposte)])
-            nuova_domanda = genera_domanda_anti_fake(storia)
-            st.session_state.domande.append(nuova_domanda)
+# --- FASE 1: Raccolta dati profilo utente ---
+if st.session_state.step == "profilo":
+    st.title("Certificazione Team Work – Sistema Adattivo e Coerente")
+    st.subheader("Compila il tuo profilo per iniziare")
 
-        st.markdown(f"### Domanda {st.session_state.indice_domanda + 1}")
-        st.markdown(st.session_state.domande[st.session_state.indice_domanda])
-        risposta = st.text_area("La tua risposta", value="", key=f"r_{st.session_state.indice_domanda}")
+    nome = st.text_input("Nome e cognome")
+    eta = st.number_input("Età", min_value=16, max_value=99, step=1)
+    azienda = st.text_input("Azienda attuale o più recente")
+    settore = st.text_input("Settore di attività")
+    ruolo = st.text_input("Ruolo attuale o più recente")
+    anni_settore = st.slider("Anni di esperienza nel settore", 0, 40, 5)
+    anni_ruolo = st.slider("Anni di esperienza nel ruolo", 0, 40, 3)
 
-        if st.button("Invia", key=f"b_{st.session_state.indice_domanda}"):
-            if risposta.strip():
-                st.session_state.risposte.append(risposta.strip())
-                comportamento = classifica_comportamento(risposta.strip())
-                st.session_state.comportamenti.append(comportamento)
-                st.session_state.indice_domanda += 1
-                if st.session_state.indice_domanda >= 25:
-                    st.session_state.profilo_valutato = True
-                st.rerun()
+    if st.button("Inizia il test"):
+        st.session_state.profilo_utente = {
+            "nome": nome,
+            "eta": eta,
+            "azienda": azienda,
+            "settore": settore,
+            "ruolo": ruolo,
+            "anni_settore": anni_settore,
+            "anni_ruolo": anni_ruolo
+        }
 
-# Fase finale
-if st.session_state.profilo_valutato and st.session_state.indice_domanda >= 25:
-    st.markdown("## ✅ Test completato")
-    if not st.session_state.risultato_finale:
-        with st.spinner("Analisi finale in corso..."):
-            st.session_state.risultato_finale = valuta_teamwork(st.session_state.risposte, st.session_state.comportamenti)
+        # Genera prima domanda
+        prompt = genera_prompt_iniziale(st.session_state.profilo_utente)
+        domanda = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        ).choices[0].message.content.strip()
 
-    st.markdown("### 📊 Profilo del candidato")
-    st.text(st.session_state.risultato_finale)
+        st.session_state.domande.append(domanda)
+        st.session_state.step = "test"
+        st.rerun()
 
-    if ">=70" in st.session_state.risultato_finale or "maggiore di 70" in st.session_state.risultato_finale:
+# --- FASE 2: Domande dinamiche e valutazione ---
+elif st.session_state.step == "test":
+    st.title("Domande dinamiche di Team Work")
+    indice = st.session_state.indice
+    domanda = st.session_state.domande[indice]
+    st.markdown(f"**Domanda {indice + 1} di 40**")
+    st.markdown(f"> {domanda}")
+
+    risposta = st.text_area("La tua risposta", key=f"risposta_{indice}")
+
+    if st.button("Invia risposta"):
+        st.session_state.risposte.append(risposta)
+
+        valutazione = valuta_risposta(risposta)
+        st.session_state.valutazioni.append(valutazione)
+
+        punteggi = {}
+        for line in valutazione.splitlines():
+            for k in ["Collaborazione", "Comunicazione", "Leadership", "Problem solving", "Empatia"]:
+                if line.startswith(k):
+                    try:
+                        punteggi[k] = int("".join(filter(str.isdigit, line)))
+                    except:
+                        pass
+        st.session_state.punteggi.append(punteggi)
+
+        st.session_state.indice += 1
+
+        if st.session_state.indice >= 25 and st.session_state.indice < 40:
+            profilo = st.session_state.profilo_utente
+            storia = list(zip(st.session_state.domande, st.session_state.risposte))
+            nuova = genera_domanda_dinamica(profilo, storia)
+            st.session_state.domande.append(nuova)
+        elif st.session_state.indice == 40:
+            st.session_state.step = "risultato"
+
+        st.rerun()
+
+# --- FASE 3: Profilo finale e badge ---
+elif st.session_state.step == "risultato":
+    st.title("✅ Profilazione completata")
+
+    media = {}
+    for k in ["Collaborazione", "Comunicazione", "Leadership", "Problem solving", "Empatia"]:
+        valori = [p.get(k, 0) for p in st.session_state.punteggi if k in p]
+        media[k] = round(sum(valori)/len(valori), 2)
+
+    totale = round(sum(media.values()) / len(media), 2)
+
+    st.markdown("### Profilo finale:")
+    for k, v in media.items():
+        st.markdown(f"**{k}**: {v}/100")
+
+    st.markdown("### 🧭 Esito certificazione")
+    if totale >= 70:
+        st.success("🎖 Complimenti! Hai ottenuto la certificazione Team Work")
         st.image("https://raw.githubusercontent.com/CertSkill/teamwork-cert/main/badge.png", width=300)
-        st.success("🎖 Hai ottenuto la certificazione Team Work!")
     else:
-        st.info("🧠 Continua ad allenarti per ottenere il badge.")
+        st.warning("Continua ad allenarti per ottenere la certificazione.")
 
-    if st.button("🔁 Ricomincia"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+    if st.button("🔄 Ricomincia il test"):
+        st.session_state.clear()
         st.rerun()
