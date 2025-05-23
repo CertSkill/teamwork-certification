@@ -102,21 +102,21 @@ if st.session_state.step == "profilo":
 
 # Fase 2: Test
 elif st.session_state.step == "test":
+    st.title("Domande dinamiche di Team Work")
     indice = st.session_state.indice
-    st.title(f"Domanda {indice + 1} di 40")
 
-    # Se siamo oltre la prima domanda ma la lista non è abbastanza lunga, genera nuova domanda
     if indice >= len(st.session_state.domande):
-    nuova = genera_domanda_dinamica(
-        st.session_state.profilo_utente,
-        list(zip(st.session_state.domande, st.session_state.risposte))
-    )
-    st.session_state.domande.append(nuova)
+        nuova = genera_domanda_dinamica(
+            st.session_state.profilo_utente,
+            list(zip(st.session_state.domande, st.session_state.risposte))
+        )
+        st.session_state.domande.append(nuova)
 
     domanda = st.session_state.domande[indice]
-    st.markdown(f"**{domanda}**")
+    st.markdown(f"**Domanda {indice + 1} di 40**")
+    st.markdown(f"> {domanda}")
 
-    risposta = st.text_area("La tua risposta:", key=f"r_{indice}")
+    risposta = st.text_area("La tua risposta", key=f"risposta_{indice}")
 
     if st.button("Invia risposta"):
         st.session_state.risposte.append(risposta)
@@ -124,27 +124,23 @@ elif st.session_state.step == "test":
         valutazione = valuta_risposta(risposta)
         st.session_state.valutazioni.append(valutazione)
 
-        # Parsing valutazione
         punteggi = {}
-        for riga in valutazione.splitlines():
+        for line in valutazione.splitlines():
             for k in ["Collaborazione", "Comunicazione", "Leadership", "Problem solving", "Empatia"]:
-                if riga.startswith(k):
+                if line.startswith(k):
                     try:
-                        punteggi[k] = int("".join(filter(str.isdigit, riga)))
+                        punteggi[k] = int("".join(filter(str.isdigit, line)))
                     except:
                         pass
         st.session_state.punteggi.append(punteggi)
 
         st.session_state.indice += 1
 
-        # Genera nuova domanda se siamo tra 25 e 39
-        if 25 <= st.session_state.indice < 40:
-            nuova = genera_domanda_dinamica(st.session_state.profilo_utente, list(zip(st.session_state.domande, st.session_state.risposte)))
-            st.session_state.domande.append(nuova)
-        elif st.session_state.indice == 40:
+        if st.session_state.indice == 40:
             st.session_state.step = "risultato"
 
         st.rerun()
+
 
 # Fase 3: Risultato
 elif st.session_state.step == "risultato":
