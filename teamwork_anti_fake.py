@@ -109,6 +109,12 @@ if st.button("Inizia il test"):
 elif st.session_state.step == "test":
     st.title("Domande dinamiche di Team Work")
     indice = st.session_state.indice
+
+    # Verifica che l’elenco delle domande sia popolato
+        if "domande" not in st.session_state or len(st.session_state.domande) <= indice:
+        st.error("Errore interno: le domande non sono state generate correttamente.")
+        st.stop()
+    
     domanda = st.session_state.domande[indice]
     st.markdown(f"**Domanda {indice + 1} di 40**")
     st.markdown(f"> {domanda}")
