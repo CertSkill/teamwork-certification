@@ -107,9 +107,11 @@ elif st.session_state.step == "test":
 
     # Se siamo oltre la prima domanda ma la lista non è abbastanza lunga, genera nuova domanda
     if indice >= len(st.session_state.domande):
-    nuova = genera_domanda_dinamica(st.session_state.profilo_utente, list(zip(st.session_state.domande, st.session_state.risposte)))
+    nuova = genera_domanda_dinamica(
+        st.session_state.profilo_utente,
+        list(zip(st.session_state.domande, st.session_state.risposte))
+    )
     st.session_state.domande.append(nuova)
-
 
     domanda = st.session_state.domande[indice]
     st.markdown(f"**{domanda}**")
